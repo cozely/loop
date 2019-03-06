@@ -1,0 +1,2 @@
+- Add a (configurable) framerate limiter.
+- Add package doc.

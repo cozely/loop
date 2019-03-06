@@ -50,8 +50,8 @@ var (
 	lag   time.Duration
 )
 
-// Step returns the time between two consecutive updates. It is a
-// fixed value, that only changes when configured with //TODO
+// Step returns the time between two consecutive updates. It is a fixed value,
+// that only changes when configured with the TimeStep option.
 //
 // See also Delta and Lag.
 func Step() time.Duration {
