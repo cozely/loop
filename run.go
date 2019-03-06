@@ -58,6 +58,13 @@ func Step() time.Duration {
 	return step
 }
 
+func TimeStep(s time.Duration) Option {
+	return func(*private) error {
+		step = s
+		return nil
+	}
+}
+
 // Delta returns the time elapsed between the frame to be rendered
 // and the previous one.
 //
@@ -84,26 +91,26 @@ func Run(start State) (err error) {
 	}
 
 	// Start
-	state, next = start, start
+	start.Enter()
+	start.React()
+	start.Update()
+	next = start
 
 	t0 := time.Now()
 	t1 := t0
 	delta, lag = 0, 0
 
-	state.Enter()
-	state.React()
-	state.Update()
-
 	// Loop
 	for next != nil {
 		state = next
-		delta = t1.Sub(t0)
-		//count frames
-		if delta > 4*step {
-			// Prevent "spiral of death" when Render cannot keep up with Update
-			delta = 4 * step
+
+		// Apply any pending configuration
+		for _, o := range options {
+			err := o(&private{})
+			if err != nil {
+				return err
+			}
 		}
-		lag += delta
 
 		// React, and (maybe) Update
 		if lag < step {
@@ -120,6 +127,13 @@ func Run(start State) (err error) {
 
 		t0 = t1
 		t1 = time.Now()
+		delta = t1.Sub(t0)
+		stats()
+		if delta > 4*step {
+			// Prevent "spiral of death" when Render cannot keep up with Update
+			delta = 4 * step
+		}
+		lag += delta
 	}
 
 	// Stop
@@ -131,7 +145,7 @@ func Run(start State) (err error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 const (
-	statInterval  = time.Second / 4
+	statsInterval = time.Second / 4
 	xrunThreshold = 17 * time.Millisecond
 )
 
@@ -152,13 +166,13 @@ func Stats() (frametime float64, overruns int) {
 	return frametime, xruns
 }
 
-func stat() {
+func stats() {
 	interval.frames++
 	interval.time += delta
 	if delta > xrunThreshold {
 		interval.xruns++
 	}
-	if interval.time >= statInterval {
+	if interval.time >= statsInterval {
 		frametime = float64(interval.time) / float64(interval.frames)
 		xruns = interval.xruns
 		interval.time, interval.frames, interval.xruns = 0, 0, 0
